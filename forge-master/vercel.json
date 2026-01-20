@@ -1,19 +1,28 @@
 
 {
   "version": 2,
-  "public": true,
   "cleanUrls": true,
   "trailingSlash": false,
-  "builds": [
-    {
-      "src": "**/*",
-      "use": "@vercel/static"
-    }
-  ],
   "rewrites": [
     {
-      "source": "/(.*)\\.(ts|tsx|js|json|css|png|jpg|jpeg|gif|svg|ico)",
-      "destination": "/$1.$2"
+      "source": "/index.tsx",
+      "destination": "/index.tsx"
+    },
+    {
+      "source": "/App.tsx",
+      "destination": "/App.tsx"
+    },
+    {
+      "source": "/types.ts",
+      "destination": "/types.ts"
+    },
+    {
+      "source": "/constants.ts",
+      "destination": "/constants.ts"
+    },
+    {
+      "source": "/services/(.*)",
+      "destination": "/services/$1"
     },
     {
       "source": "/(.*)",

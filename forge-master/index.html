@@ -24,7 +24,7 @@
             height: 100vh;
             width: 100vw;
             overflow: hidden;
-            font-size: 16px; /* 提升基础字号 */
+            font-size: 16px;
         }
         .quality-1 { color: #ffffff; text-shadow: 0 0 5px rgba(255,255,255,0.3); }
         .quality-2 { color: #4ade80; text-shadow: 0 0 5px rgba(74,222,128,0.3); }
@@ -54,7 +54,8 @@
             padding-bottom: calc(0.5rem + var(--safe-area-inset-bottom)) !important;
         }
     </style>
-<script type="importmap">
+    <!-- 使用 esms-compiler 让浏览器能直接运行 TSX -->
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@19.0.0",
@@ -65,11 +66,41 @@
   }
 }
 </script>
+    <script type="module">
+        import { transform } from 'https://esm.sh/@babel/standalone';
+
+        // 简单的运行时 TSX 加载器
+        async function loadTsx(url) {
+            const response = await fetch(url);
+            const code = await response.text();
+            const transformed = transform(code, {
+                presets: ['react', ['typescript', { isTSX: true, allExtensions: true }]],
+                filename: url
+            }).code;
+            
+            // 将编译后的代码转换为 Blob 并在浏览器中执行
+            const blob = new Blob([transformed], { type: 'application/javascript' });
+            return URL.createObjectURL(blob);
+        }
+
+        // 修改 index.tsx 的加载逻辑以支持浏览器环境
+        // 这里的方案是使用 esm.sh 的 ?bundle 模式，这是在 Vercel 静态环境下运行 TSX 最稳定的方式
+    </script>
+    <!-- 更简便的方法：直接使用 esm.sh 的转换器路径 -->
+    <script type="module" src="https://esm.sh/run"></script>
 <link rel="stylesheet" href="/index.css">
 </head>
 <body>
     <div id="root"></div>
-    <script type="module" src="index.tsx"></script>
+    <!-- 通过 esm.sh 的运行时直接加载入口 -->
+    <script type="module" data-src="index.tsx">
+        import React from 'react';
+        import ReactDOM from 'react-dom/client';
+        import App from './App.tsx';
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(App));
+    </script>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>
