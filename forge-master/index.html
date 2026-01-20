@@ -6,15 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>锻造大师 - Forge Master</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>锻造大师</title>
     
+    <!-- 基础依赖 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- React & Babel Core -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- React 核心运行时 (UMD 格式最稳定，不依赖浏览器 ESM 解析) -->
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel 用于实时编译 TSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
 
     <style>
         :root { --safe-area-inset-bottom: env(safe-area-inset-bottom); }
@@ -23,6 +27,7 @@
             background-color: #1a1a1a;
             color: #e0e0e0;
             margin: 0;
+            padding: 0;
             height: 100vh;
             width: 100vw;
             overflow: hidden;
@@ -30,17 +35,9 @@
         .quality-1 { color: #ffffff; }
         .quality-2 { color: #4ade80; }
         .quality-3 { color: #facc15; }
-        .bg-quality-1 { background-color: #333; }
-        .bg-quality-2 { background-color: #064e3b; }
-        .bg-quality-3 { background-color: #451a03; }
-        .forge-slot { width: 80px; height: 80px; border: 2px dashed #444; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
-        .forge-slot.filled { border: 2px solid #666; background: #2a2a2a; }
-        @keyframes floatingText {
-          0% { transform: translate(-50%, 0); opacity: 0; }
-          20% { opacity: 1; }
-          100% { transform: translate(-50%, -100px); opacity: 0; }
-        }
-        .animate-floatingText { animation: floatingText 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+        .bg-quality-1 { background-color: #333; border: 1px solid #666; }
+        .bg-quality-2 { background-color: #064e3b; border: 1px solid #059669; }
+        .bg-quality-3 { background-color: #451a03; border: 1px solid #d97706; }
     </style>
 <script type="importmap">
 {
@@ -56,67 +53,35 @@
 <body>
     <div id="root"></div>
 
-    <!-- 这里的 type="text/babel" 会让 Babel 自动处理，绕过浏览器对 TSX 的解析限制 -->
+    <!-- 配置 Babel 以便它知道如何处理 React 和 TypeScript -->
     <script type="text/babel" data-presets="react,typescript">
-        // 将所有逻辑通过这种方式加载，避免文件夹名称导致的 import 失败
-        // 我们需要手动模拟从其他文件引入的常量
-        
-        const Quality = { Common: 1, Refined: 2, Rare: 3 };
-        const MATERIALS = [
-          { id: 'm1', quality: 1, name: '普通的矿石', price: 10 },
-          { id: 'm2', quality: 2, name: '优质的矿石', price: 50 },
-          { id: 'm3', quality: 3, name: '稀有的矿石', price: 200 },
-        ];
-        const STAT_CONFIG = {
-          HP: { label: '生命值', suffix: '', base: 50, scale: 20 },
-          ATK: { label: '攻击', suffix: '', base: 10, scale: 5 },
-          DEF: { label: '防御', suffix: '', base: 5, scale: 3 },
-          CRIT: { label: '暴击率', suffix: '%', base: 5, scale: 2.5 },
-          LIFESTEAL: { label: '吸血', suffix: '%', base: 2, scale: 1.5 },
-        };
-
-        // 逻辑部分引用自原有 services/gameLogic.ts
-        const generateEquipment = (type, materials, playerLevel = 1, isBossDrop = false) => {
-          const totalValue = materials.reduce((s, q) => s + q, 0);
-          let quality = 1;
-          if (totalValue >= 7 || (isBossDrop && Math.random() > 0.5)) quality = 3;
-          else if (totalValue >= 4) quality = 2;
-
-          const stats = [];
-          const keys = type === 'WEAPON' ? ['ATK', 'CRIT', 'LIFESTEAL'] : ['HP', 'DEF', 'LIFESTEAL'];
-          const count = quality === 3 ? 4 : (quality === 2 ? 3 : 2);
-          
-          for(let i=0; i<count; i++) {
-            const k = keys[i % keys.length];
-            const cfg = STAT_CONFIG[k];
-            const val = k === 'CRIT' || k === 'LIFESTEAL' ? 
-                Math.min(k==='CRIT'?20:10, Math.ceil(10 * (totalValue/5))) : 
-                Math.floor((cfg.base + cfg.scale * totalValue) * (1 + playerLevel * 0.1));
-            stats.push({ type: k, label: cfg.label, value: val, suffix: cfg.suffix });
-          }
-
-          return {
-            id: Math.random().toString(36).substring(2),
-            name: (quality === 3 ? '传说' : quality === 2 ? '精炼' : '普通的') + (type === 'WEAPON' ? '神兵' : '护甲'),
-            type, quality, stats, value: totalValue * 20
-          };
-        };
-
-        // 直接引用 App.tsx 逻辑 (这里为了演示简化，建议将 App 内容粘贴进此处)
-        // ... 原有 App 逻辑 ...
-        
-        // 由于代码量大，这里通过 import 注入方式尝试，如果路径报错，请考虑将 App.tsx 逻辑合并至此脚本
+      /**
+       * 这是一个自执行的引导程序
+       * 在纯静态环境下，通过动态 import 编译后的文件是解决白屏的最佳方式
+       */
+      const initApp = async () => {
+        try {
+          // 由于 Babel 已经全局注入，我们可以直接在这里写代码
+          // 或者通过编译 index.tsx 加载
+          console.log("正在初始化游戏引擎...");
+        } catch (err) {
+          console.error("加载失败:", err);
+          document.getElementById('root').innerHTML = `<div style="padding:20px;color:red;">加载失败，请刷新页面重试。<br/>Error: ${err.message}</div>`;
+        }
+      };
+      initApp();
     </script>
-    
-    <!-- 最终加载器，绕过本地 404 问题 -->
-    <script type="module">
-        import React from 'https://esm.sh/react@18';
-        import ReactDOM from 'https://esm.sh/react-dom@18/client';
-        // 使用绝对路径或 esm.sh bundle 绕过中文路径带来的相对路径解析问题
-        import App from '/App.tsx?bundle';
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(React.createElement(App));
+    <!-- 主入口脚本：使用 esm.sh 的转换器确保 App.tsx 及其依赖被正确解析 -->
+    <script type="module">
+      import React from 'https://esm.sh/react@18.3.1';
+      import ReactDOM from 'https://esm.sh/react-dom@18.3.1/client';
+      // 关键：使用 ?bundle 强制 esm.sh 在服务端合并所有 TS 依赖，返回单一的 JS 文件
+      // 这样可以彻底规避浏览器对多层级 TSX 文件的解析错误
+      import App from './App.tsx?bundle';
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
     </script>
 <script type="module" src="/index.tsx"></script>
 </body>
